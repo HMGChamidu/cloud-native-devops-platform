@@ -1,0 +1,44 @@
+name: DevSecOps CI Pipeline
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  build-and-security-scan:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout Code
+      uses: actions/checkout@v4
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+
+    # Build Backend & Run Trivy Security Vulnerability Scan
+    - name: Build Backend Image
+      run: |
+        docker build -t cloud-devops-backend:${{ github.sha }} ./services/backend
+
+    - name: Run Trivy Vulnerability Scanner on Backend
+      uses: aquasecurity/trivy-action@master
+      with:
+        image-ref: 'cloud-devops-backend:${{ github.sha }}'
+        format: 'table'
+        exit-code: '0' # Log security warnings without failing the build immediately
+        severity: 'CRITICAL,HIGH'
+
+    # Build Frontend & Run Trivy Security Vulnerability Scan
+    - name: Build Frontend Image
+      run: |
+        docker build -t cloud-devops-frontend:${{ github.sha }} ./services/frontend
+
+    - name: Run Trivy Vulnerability Scanner on Frontend
+      uses: aquasecurity/trivy-action@master
+      with:
+        image-ref: 'cloud-devops-frontend:${{ github.sha }}'
+        format: 'table'
+        exit-code: '0'
+        severity: 'CRITICAL,HIGH'
